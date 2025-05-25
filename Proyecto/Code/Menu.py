@@ -1,6 +1,10 @@
 from TruthTable import TruthTable
+from MenuOptions import MenuOptions
 
 class Menu:
+    def __init__(self):
+        self.menu_options = MenuOptions()
+    
     def get_names(self):
         print("Ingrese hasta cinco proposiciones.")
         entrada = input("Proposiciones (separados por comas): ")
@@ -11,12 +15,11 @@ class Menu:
         return names
 
     def get_expression(self, symbols):
-        print("\nUse los siguientes simbolos:")
-        print("  y, o, no, (p condicional q), (p bicondicional q), (p xor q)")
-        print("Ejemplo: (p condicional q) o no(r)")
+        self.menu_options.show_help()
         return input("Expresion: ")
-
-    def run(self):
+    
+    def generate_truth_table(self):
+        """Ejecuta el proceso de generación de tabla de verdad"""
         names = self.get_names()
         if names is None:
             return
@@ -25,5 +28,15 @@ class Menu:
         table = TruthTable(symbols, names, expr)
         table.generate()
 
-if __name__ == "__main__":
-    Menu().run()
+    def run(self):
+        """Ejecuta el bucle principal del menú"""
+        while True:
+            self.menu_options.display_menu()
+            choice = self.menu_options.get_user_choice()
+            
+            if choice == 1:
+                self.generate_truth_table()
+                input("\nPresione Enter para continuar...")
+            elif choice == 2:
+                print("Saliendo del programa...")
+                break
