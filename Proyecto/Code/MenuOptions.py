@@ -38,6 +38,6 @@ class MenuOptions:
     def show_help(self):
         """Muestra ayuda sobre operadores"""
         print("\nUse los siguientes simbolos:")
-        print("  y, o, no, (p condicional q), (p bicondicional q), (p xor q)")
-        print("Ejemplo: (p condicional q) o no(r)")
+        print("  y, o, no, condicional, bicondicional, xor.")
+        print("Ejemplo: (primera proposicion condicional segunda proposicion) o no(tercera proposicion)")
         print()
