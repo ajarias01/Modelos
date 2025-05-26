@@ -2,56 +2,89 @@ import itertools
 import re
 
 def normalize_name(name):
-    """Convierte nombres con espacios a nombres válidos para Python, ejemplo 'juan juega' -> 'juan_juega'"""
+    # Normaliza nombres reemplazando espacios por guion bajo
     return re.sub(r'\s+', '_', name.strip())
 
-def translate_keywords(expr, variable_names):
-    # Convierte todo a minúsculas para el procesamiento uniforme
-    result = expr.lower()
+def replace_vars(expr, names):
+    # Reemplaza nombres originales en la expresión por su versión normalizada (sin espacios)
+    for name in names:
+        expr = re.sub(r'\b' + re.escape(name.lower()) + r'\b', normalize_name(name), expr)
+    return expr
 
-    # Reemplazar nombres originales (con espacios) por normalizados (sin espacios)
-    for name in variable_names:
-        normalized = normalize_name(name)
-        pattern = r'\b' + re.escape(name.lower()) + r'\b'
-        result = re.sub(pattern, normalized, result)
+def parse_expr(expr, context):
+    expr = expr.strip()
 
-    # Manejar "no" antes de otros operadores
-    result = re.sub(r'\bno\s*\(([^)]+)\)', r'(not (\1))', result)
-    result = re.sub(r'\s+no\s+', r' not ', result)
+    # Evaluar paréntesis más internos primero
+    while '(' in expr:
+        start = expr.rfind('(')
+        end = expr.find(')', start)
+        if end == -1:
+            raise Exception("Paréntesis no balanceados")
+        inner = expr[start+1:end]
+        val = parse_expr(inner, context)
+        expr = expr[:start] + str(val) + expr[end+1:]
 
-    # Operadores compuestos
-    result = re.sub(r'\(\s*([^)]+)\s+condicional\s+([^)]+)\s*\)', r'((not (\1)) or (\2))', result)
-    result = re.sub(r'\(\s*([^)]+)\s+bicondicional\s+([^)]+)\s*\)', r'((\1) == (\2))', result)
-    result = re.sub(r'\(\s*([^)]+)\s+xor\s+([^)]+)\s*\)', r'((\1) != (\2))', result)
+    # Evaluar NOT (no)
+    if expr.startswith('no '):
+        return not parse_expr(expr[3:], context)
 
-    # Operadores básicos
-    result = re.sub(r'\s+y\s+', r' and ', result)
-    result = re.sub(r'\s+o\s+', r' or ', result)
+    # Operadores lógicos en orden
 
-    return result
+    # Condicional
+    if ' condicional ' in expr:
+        a, b = expr.split(' condicional ', 1)
+        return (not parse_expr(a, context)) or parse_expr(b, context)
+
+    # Bicondicional
+    if ' bicondicional ' in expr:
+        a, b = expr.split(' bicondicional ', 1)
+        return parse_expr(a, context) == parse_expr(b, context)
+
+    # XOR
+    if ' xor ' in expr:
+        a, b = expr.split(' xor ', 1)
+        return parse_expr(a, context) != parse_expr(b, context)
+
+    # OR (o)
+    if ' o ' in expr:
+        parts = expr.split(' o ')
+        return any(parse_expr(p, context) for p in parts)
+
+    # AND (y)
+    if ' y ' in expr:
+        parts = expr.split(' y ')
+        return all(parse_expr(p, context) for p in parts)
+
+    # Si es variable normalizada
+    if expr in context:
+        return context[expr]
+
+    # Valores booleanos literales
+    if expr == 'True':
+        return True
+    if expr == 'False':
+        return False
+
+    raise Exception(f"Expresión inválida o variable desconocida: '{expr}'")
 
 class TruthTable:
-    def __init__(self, symbols, names, expression):
-        self.original_names = names                # Nombres originales con espacios
-        self.normalized_names = [normalize_name(n) for n in names]  # Nombres sin espacios
-        self.expression = expression
+    def __init__(self, names, expression):
+        self.names = names
+        self.norm_names = [normalize_name(n) for n in names]
+        self.expression = replace_vars(expression.lower(), names)
 
     def generate(self):
-        expr_eval = translate_keywords(self.expression, self.original_names)
-
-        header = "  ".join(name.center(15) for name in self.original_names) + "  |  " + self.expression
+        header = "  ".join(name.center(20) for name in self.names) + "  |  " + self.expression
         print("\n" + header)
         print("-" * len(header))
 
-        for values in itertools.product([True, False], repeat=len(self.original_names)):
-            context = dict(zip(self.normalized_names, values))
+        for values in itertools.product([True, False], repeat=len(self.names)):
+            context = dict(zip(self.norm_names, values))
             try:
-                result = eval(expr_eval, {}, context)
+                result = parse_expr(self.expression, context)
             except Exception as e:
-                print(f"Error en la expresión: {e}")
-                print(f"Expresión que causó el error: {expr_eval}")
-                print(f"Contexto: {context}")
+                print(f"Error evaluando expresión: {e}")
                 return
-            
-            row = "  ".join(str(val).center(15) for val in values)
+
+            row = "  ".join(str(val).center(20) for val in values)
             print(f"{row}  |  {result}")

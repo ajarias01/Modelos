@@ -1,4 +1,3 @@
-
 class MenuOptions:
     def __init__(self):
         self.options = {
@@ -13,18 +12,14 @@ class MenuOptions:
         }
     
     def display_menu(self):
-        """Muestra el menú principal con todas las opciones disponibles"""
         print("\n" + "="*50)
         print("GENERADOR DE TABLAS DE VERDAD".center(50))
         print("="*50)
-        
         for key, option in self.options.items():
             print(f"{key}. {option['title']}")
-            print(f"   {option['description']}")
-            print()
+            print(f"   {option['description']}\n")
     
     def get_user_choice(self):
-        """Obtiene la opción seleccionada por el usuario"""
         while True:
             try:
                 choice = int(input("Seleccione una opción: "))
@@ -36,8 +31,7 @@ class MenuOptions:
                 print("Por favor, ingrese un número válido.")
     
     def show_help(self):
-        """Muestra ayuda sobre operadores"""
-        print("\nUse los siguientes simbolos:")
-        print("  y, o, no, condicional, bicondicional, xor.")
-        print("Ejemplo: (primera proposicion condicional segunda proposicion) o no(tercera proposicion)")
-        print()
+        print("\nUse los siguientes operadores lógicos en español:")
+        print("  y, o, no, condicional, bicondicional, xor")
+        print("Ejemplo:")
+        print("  (primera proposicion condicional segunda proposicion) o no(tercera proposicion)\n")
