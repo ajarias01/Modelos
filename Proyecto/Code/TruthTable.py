@@ -1,59 +1,57 @@
 import itertools
 import re
 
+def normalize_name(name):
+    """Convierte nombres con espacios a nombres válidos para Python, ejemplo 'juan juega' -> 'juan_juega'"""
+    return re.sub(r'\s+', '_', name.strip())
+
 def translate_keywords(expr, variable_names):
-    # Convertir a minúsculas para procesamiento uniforme
+    # Convierte todo a minúsculas para el procesamiento uniforme
     result = expr.lower()
-    
-    # Manejar "no" en todas sus formas ANTES de otros operadores
-    # no(expresión) -> (not expresión)
+
+    # Reemplazar nombres originales (con espacios) por normalizados (sin espacios)
+    for name in variable_names:
+        normalized = normalize_name(name)
+        pattern = r'\b' + re.escape(name.lower()) + r'\b'
+        result = re.sub(pattern, normalized, result)
+
+    # Manejar "no" antes de otros operadores
     result = re.sub(r'\bno\s*\(([^)]+)\)', r'(not (\1))', result)
-    # " no " -> " not "
     result = re.sub(r'\s+no\s+', r' not ', result)
-    
-    # Operadores complejos con paréntesis
-    # Condicional: (A condicional B) -> ((not A) or B)
+
+    # Operadores compuestos
     result = re.sub(r'\(\s*([^)]+)\s+condicional\s+([^)]+)\s*\)', r'((not (\1)) or (\2))', result)
-    # Bicondicional: (A bicondicional B) -> (A == B)  
     result = re.sub(r'\(\s*([^)]+)\s+bicondicional\s+([^)]+)\s*\)', r'((\1) == (\2))', result)
-    # XOR: (A xor B) -> (A != B)
     result = re.sub(r'\(\s*([^)]+)\s+xor\s+([^)]+)\s*\)', r'((\1) != (\2))', result)
-    
-    # Operadores básicos (con espacios obligatorios para evitar conflictos)
+
+    # Operadores básicos
     result = re.sub(r'\s+y\s+', r' and ', result)
     result = re.sub(r'\s+o\s+', r' or ', result)
-    
-    # Restaurar variables originales (solo palabras completas)
-    for name in variable_names:
-        # Usar límites de palabra para evitar reemplazar partes de 'or', 'and', etc.
-        pattern = r'\b' + re.escape(name.lower()) + r'\b'
-        result = re.sub(pattern, name, result)
-    
+
     return result
 
 class TruthTable:
     def __init__(self, symbols, names, expression):
-        self.symbols = symbols
-        self.names = names
+        self.original_names = names                # Nombres originales con espacios
+        self.normalized_names = [normalize_name(n) for n in names]  # Nombres sin espacios
         self.expression = expression
 
     def generate(self):
-        expr_eval = translate_keywords(self.expression, self.names)
-        
-        header = "  ".join(name.center(8) for name in self.names) + "  |  " + self.expression
+        expr_eval = translate_keywords(self.expression, self.original_names)
+
+        header = "  ".join(name.center(15) for name in self.original_names) + "  |  " + self.expression
         print("\n" + header)
         print("-" * len(header))
 
-        for values in itertools.product([True, False], repeat=len(self.names)):
-            context = dict(zip(self.names, values))
-            
+        for values in itertools.product([True, False], repeat=len(self.original_names)):
+            context = dict(zip(self.normalized_names, values))
             try:
                 result = eval(expr_eval, {}, context)
             except Exception as e:
-                print(f"Error en la expresion: {e}")
+                print(f"Error en la expresión: {e}")
                 print(f"Expresión que causó el error: {expr_eval}")
                 print(f"Contexto: {context}")
                 return
-                
-            row = "  ".join(str(context[name]).center(8) for name in self.names)
+            
+            row = "  ".join(str(val).center(15) for val in values)
             print(f"{row}  |  {result}")
